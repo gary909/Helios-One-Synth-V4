@@ -86,8 +86,13 @@ $$$$$$$  |\$$$$$$$ |$$ |  $$ | \$$$$  |$$ |  $$ |\$$$$$$$\ $$$$$$$  |$$ |$$$$$$$
 #include <LowPassFilter.h> // You need this for the LPF
 #include <AutoMap.h> // to track and reassign the pot values
 
+// Table data
 #include <tables/saw2048_int8.h> // saw table for oscillator
 #include <tables/square_no_alias_2048_int8.h> // square table for oscillator
+//*******NEW V4 CODE***************
+//LFO table data
+#include <tables/sin2048_int8.h> // Load Sine wave table DATA for LFO
+//**********END********************
  
 //Create an instance of a low pass filter
 LowPassFilter lpf; 
@@ -99,7 +104,7 @@ MIDI_CREATE_DEFAULT_INSTANCE();
 #define WAVE_SWITCH 2 // switch for switching waveforms
 
 
-// Set up Attack & Decay Envelope
+//***********Set up Attack & Decay Envelope pins etc***************
 const int atkPot = A5;    // select the input pin for the potentiometer
 //int atkVal = 0;       // variable to store the value coming from the pot
 AutoMap atkPotMap(0, 1023, 0, 3000);  // remap the atk pot to 4 seconds
@@ -124,6 +129,12 @@ int resVal = 0; //a value to store resonance amount value
 Oscil <SAW2048_NUM_CELLS, AUDIO_RATE> oscil1; //Saw Wav
 Oscil <SQUARE_NO_ALIAS_2048_NUM_CELLS, AUDIO_RATE> oscil2; //Sqr wave
 
+
+//*******NEW V4 CODE***************
+//*******LFO Waveform**************
+Oscil <SIN2048_NUM_CELLS, AUDIO_RATE>lfo(SIN2048_DATA); //LFO sinewave
+//**********END********************
+
 // envelope generator
 ADSR <CONTROL_RATE, AUDIO_RATE> envelope;
 
@@ -143,7 +154,7 @@ void HandleNoteOff(byte channel, byte note, byte velocity) {
 
 
 
-
+//************************SETUP******************************************************************************************
 void setup() {
 //  Serial.begin(9600); // see the output
   pinMode(LED, OUTPUT);  // built-in arduino led lights up with midi sent data 
@@ -155,12 +166,10 @@ void setup() {
   envelope.setADLevels(255,64); // A bit of attack / decay while testing
   oscil1.setFreq(440); // default frequency
 //  lpf.setResonance(200); // DELETE this once you've got the resonance pot working
-
-  
   startMozzi(CONTROL_RATE); 
 }
 
-
+//*********************UPDATE CONTROL*************************************************************************************
 void updateControl(){
   MIDI.read();
   envelope.update();
@@ -169,9 +178,6 @@ void updateControl(){
   int dkyVal = mozziAnalogRead(dkyPot);    // read the value from the decay pot
   dkyVal = dkyPotMap(dkyVal);
   envelope.setTimes(atkVal,60000,60000,dkyVal); // 60000 is so the note will sustain 60 seconds unless a noteOff comes
-
-
-
 
   //**************RESONANCE POT****************
   resVal = mozziAnalogRead(resPot);  // arduino checks pot value
@@ -199,14 +205,19 @@ void updateControl(){
 }
 
 
+
+
+//******************UPDATE AUDIO****************************************************************************************
 int updateAudio(){
 //  return (int) (envelope.next() * oscil1.next())>>8; // original here, but now we need to pass filter as well
   char asig = (envelope.next() * oscil1.next())>>9; // changed down from 10 to 9 because was louder
   return (lpf.next(asig));
-
 }
 
 
+
+
+//*****************LOOP*************************************************************************************************
 void loop() {
   audioHook(); // required here
 } 
