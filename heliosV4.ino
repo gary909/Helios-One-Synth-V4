@@ -39,8 +39,7 @@ $$$$$$$  |\$$$$$$$ |$$ |  $$ | \$$$$  |$$ |  $$ |\$$$$$$$\ $$$$$$$  |$$ |$$$$$$$
 
 /*    V4
  *    Time to add the LFO
- *    No code currently added
- *    refactor code
+ *    Early implementation - needs work!
  *    
  *    V3.1 - Minor Updates
  *   *IImproved Filter Resonance (?).  Apparantly After setting resonance, you need to call setCuttoffFreq() to hear the change.
@@ -133,6 +132,17 @@ Oscil <SQUARE_NO_ALIAS_2048_NUM_CELLS, AUDIO_RATE> oscil2; //Sqr wave
 //*******NEW V4 CODE***************
 //*******LFO Waveform**************
 Oscil <SIN2048_NUM_CELLS, AUDIO_RATE>lfo(SIN2048_DATA); //LFO sinewave
+// Assign arduino pins;
+#define LFORATE A1
+#define LFODEPTH A0
+//variables to track pots;
+int depth = 0;
+int rate = 1;
+//Globals for audio calculation
+float current_osc_freq;
+//Set up LFO Automap
+AutoMap rateMap(0, 1023, 0, 2000);
+AutoMap depthMap(0, 1023, 0, 5);
 //**********END********************
 
 // envelope generator
@@ -186,10 +196,28 @@ void updateControl(){
 
   //**************CUT-OFF POT****************
   cutVal = mozziAnalogRead(cutoffPot);  // arduino checks pot value
-//cutVal = map(cutVal, 0, 1023, 0, 255); // arduino changes value to max of 255 (lower value if distorting)
-//byte cutoff_freq = cutVal;  // Set the cuttoff frequency to that of the pot 
+  //cutVal = map(cutVal, 0, 1023, 0, 255); // arduino changes value to max of 255 (lower value if distorting)
+  //byte cutoff_freq = cutVal;  // Set the cuttoff frequency to that of the pot 
   byte cutoff_freq = cutVal>>2; // This method is less resource intense than the above map method
   lpf.setCutoffFreq(cutoff_freq);  // change the freq
+
+  //*******NEW V4 CODE**************************
+  //*******LFO pot read and assign**************
+  rate = mozziAnalogRead(LFORATE);
+  rate = rateMap(rate);
+  lfo.setFreq(rate);
+
+  depth = mozziAnalogRead(LFODEPTH);
+  depth = depthMap(depth);
+
+  //++++++++HANDLE THE LFO**********************
+  //Calculate the voltage amount
+
+  long control_voltage = lfo.next() * depth;
+  int attenuated_voltage = control_voltage >> 1;
+  
+  
+  //**********END******************************
 
   //**************WAVE FORM SWITCH**************
   pinMode(2, INPUT_PULLUP); // Pin two is connected to the middle of a switch, high switch goes to 5v, low to ground
@@ -197,6 +225,8 @@ void updateControl(){
   if (sensorVal == HIGH) // If switch is set to high, run this portion of code
   {
     oscil1.setTable(SAW2048_DATA);
+    //*******NEW V4 CODE**************************
+    oscil1.setFreq(current_osc_freq + attenuated_voltage);
   }
   else  // If switch not set to high, run this portion of code instead
   {
