@@ -231,6 +231,8 @@ void updateControl(){
   else  // If switch not set to high, run this portion of code instead
   {
     oscil1.setTable(SQUARE_NO_ALIAS_2048_DATA);
+    //*******NEW V4 CODE**************************
+    oscil1.setFreq(current_osc_freq + attenuated_voltage);
   }
 }
 
